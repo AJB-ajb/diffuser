@@ -1,4 +1,4 @@
-import gym
+#import gym
 
 ENVIRONMENT_SPECS = (
     {
