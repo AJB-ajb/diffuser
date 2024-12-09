@@ -1,6 +1,8 @@
 bin/
 logs/
 wandb/
+data/
+.vscode/
 
 fuse.cfg
 
