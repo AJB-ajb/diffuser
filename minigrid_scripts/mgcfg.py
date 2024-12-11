@@ -178,6 +178,7 @@ base_cfg = Cfg(
     is_toplevel=True,
     name = "",
     env_id="",
+    run_name="",
     env_module = "",
     feature_coder = "",
     policy=Cfg(
@@ -222,6 +223,7 @@ base_cfg = Cfg(
 
 empty_env_cfg = Cfg(**base_cfg)
 empty_env_cfg['name'] = "empty_env"
+empty_env_cfg['run_name'] = "run0"
 empty_env_cfg['env_id'] = "MiniGrid-Empty-16x16-v0"
 empty_env_cfg['env_module'] = "empty_env"
 empty_env_cfg['feature_coder'] = "EmptyEnvDiscFC"
