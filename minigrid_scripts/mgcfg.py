@@ -113,8 +113,10 @@ class Cfg(collections.abc.MutableMapping):
 class Experiment:
     def __init__(self, cfg: Cfg):
         self.cfg = cfg
-        self.log_dir = cfg.storage_dir / cfg.name
-        self.tensorboard_logdir = self.log_dir / "logs"
+        self.log_dir = cfg.storage_dir / cfg.name 
+        self.run_log_dir = self.log_dir / cfg.run_name
+
+        self.tensorboard_logdir = self.run_log_dir / "logs"
 
         for dir in [self.log_dir, self.tensorboard_logdir, self.model_dir, self.results_dir, self.saves_dir, self.episode_dir]:
             dir.mkdir(exist_ok=True, parents=True)
@@ -144,16 +146,16 @@ class Experiment:
 
     @property 
     def model_dir(self): # to save trained diffuser models
-        return self.log_dir / "model"
+        return self.run_log_dir / "model"
     
     # results plots
     @property
     def results_dir(self):
-        return self.log_dir / "results"
+        return self.run_log_dir / "results"
     
     @property
     def saves_dir(self):
-        return self.log_dir / "saves"
+        return self.run_log_dir / "saves"
     
     @property
     def repo_dir(self):
