@@ -14,7 +14,6 @@ from gymnasium import Env
 
 from minigrid.minigrid_env import MiniGridEnv
 from minigrid_base import EnvFeatureCoderBase
-from empty_env import *
 from minigrid_base import Episode
 
 import numpy as np
@@ -24,32 +23,36 @@ import torch.nn as nn
 from pathlib import Path
 import pickle
 
-import cfg
-from cfg import Cfg, Experiment
+import mgcfg
+from mgcfg import Cfg, Experiment
+import sys
+from typing import List
 
-cfg = cfg.empty_env_cfg
-cfg.run_name = "empty_env_1"
+if len(sys.argv) > 1:
+    cfg = mgcfg.Cfg.load_from_args()
+else:
+    # test
+    cfg = mgcfg.empty_env_cfg
+    print("Using default empty env configuration for testing")
+
 
 exp = Experiment(cfg)
+exp.instantiate()
 
 device = 'cuda' if th.cuda.is_available() else 'cpu'
 
-base_path = exp.log_dir
 env = gym.make(cfg.env_id, render_mode="rgb_array")
-save_folder = exp.saves_path  # trainer.savepath # also, here are render results saved
-results_folder = exp.results_path # trainer.results_folder
 
 fc = feature_coder = EmptyEnvDiscFC(env_id=cfg.env_id)
 observation_dim = fc.observation_dim
 action_dim = fc.action_dim
 
-episode_file = "ppo_minigrid_2e5_new_trajectories.pkl"
-with open(exp.episode_path / episode_file, "rb") as f:
+with open(str(exp.collected_episodes_path), "rb") as f:
     episodes = pickle.load(f)
 
 traj_max_len = max([len(ep.observations) for ep in episodes])
 
-def episode_iterator(episodes : list[Episode]):
+def episode_iterator(episodes: List[Episode]):
     for i_episode, episode in enumerate(episodes):
         observations = episode.observations
         traj_length = len(observations)
@@ -68,10 +71,19 @@ def episode_iterator(episodes : list[Episode]):
             
         yield {'observations' : observation_reprs, 'actions' : action_reprs, 'terminals' : terminals}
 
-dataset = GoalDataset(env, horizon=cfg.horizon, normalizer = normalization.LimitsNormalizer, episode_itr = episode_iterator(episodes), max_path_length = 1000, max_n_episodes = 10000, termination_penalty = None, use_padding = True)
+dataset = GoalDataset(
+    env,
+    horizon=cfg.horizon,
+    normalizer=normalization.LimitsNormalizer,
+    episode_itr=episode_iterator(episodes),
+    max_path_length=1000, 
+    max_n_episodes=10000,
+    termination_penalty=None,
+    use_padding=True
+)
 
 #renderer:
-renderer = MinigridRenderer(env, feature_coder)
+renderer = MinigridRenderer(exp, cfg)
 
     
 # instantiate model
@@ -88,37 +100,37 @@ diffusion = GaussianDiffusion(
     horizon=cfg.horizon,
     observation_dim=observation_dim,
     action_dim=action_dim,
-    n_timesteps=cfg.n_diffusion_steps,
+    n_timesteps=cfg.diffusion.n_diffusion_steps,
     loss_type='l1',
-    clip_denoised=cfg.clip_denoised,
-    predict_epsilon=cfg.predict_epsilon,
-    action_weight=cfg.action_weight,
-    loss_discount=1
+    clip_denoised=cfg.diffusion.clip_denoised,
+    predict_epsilon=cfg.diffusion.predict_epsilon,
+    action_weight=cfg.diffusion.action_weight,
+    loss_discount=cfg.diffusion.loss_discount
 ).to(device)
 
 trainer = Trainer(
     diffusion_model=diffusion,
     dataset=dataset,
-    renderer = renderer,
-    ema_decay=0.995,
-    train_batch_size=32,
-    train_lr=2e-4,
-    gradient_accumulate_every=2,
-    #step_start_ema=
-    # update_ema_every=,
-    log_freq=100,
-        sample_freq=1000,
-        save_freq=1000,
-        label_freq=100000,
-        save_parallel=False,
-        results_folder=str(results_folder),
-        n_reference=50,
-        n_samples=10,
-        bucket=None,
+    renderer=renderer,
+    ema_decay=cfg.trainer.ema_decay,
+    results_folder=str(exp.results_dir),
+    train_batch_size=cfg.trainer.train_batch_size,
+    train_lr=cfg.trainer.train_lr,
+    gradient_accumulate_every=cfg.trainer.gradient_accumulate_every,
+    log_freq=cfg.trainer.log_freq,
+    sample_freq=cfg.trainer.sample_freq,
+    save_freq=cfg.trainer.save_freq,
+    label_freq=cfg.trainer.label_freq,
+    save_parallel=cfg.trainer.save_parallel,
+    n_reference=cfg.trainer.n_reference,
+    n_samples=cfg.trainer.n_samples,
+    bucket=cfg.trainer.bucket,
 )
-trainer.n_train_steps = int(2e6)
-trainer.n_steps_per_epoch=10000
-trainer.savepath = str(save_folder)
+trainer.n_train_steps = cfg.trainer.n_train_steps
+trainer.n_steps_per_epoch = cfg.trainer.n_steps_per_epoch
+trainer.savepath = str(exp.saves_dir)
+
+exp.trainer = trainer
 
 # from maze2d.py base config (?)
 #    loss_type='l2',

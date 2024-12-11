@@ -14,57 +14,98 @@ from empty_env import *
 
 #---------------------------------- setup ----------------------------------#
 
-import train as script
-env = script.env
-env.unwrapped.render_mode = 'human'
+# todo use config
+import sys
+import mgcfg
+
+import train_diffuser as script
+
+if len(sys.argv) > 1:
+    cfg = mgcfg.Cfg.load_from_args()
+else:
+    # test
+    cfg = mgcfg.empty_env_cfg
+    print("Using default empty env configuration for testing")
+
+exp = script.Experiment(cfg)
+
+device = 'cuda' if th.cuda.is_available() else 'cpu'
+
+env = gym.make(cfg.env_id, render_mode="human")
+
+fc = feature_coder = script.EmptyEnvDiscFC(env_id=cfg.env_id)
+observation_dim = fc.observation_dim
+action_dim = fc.action_dim
+
+episode_file = "ppo_minigrid_2e5_new_trajectories.pkl"
+with open(exp.episode_dir / episode_file, "rb") as f:
+    episodes = pickle.load(f)
+
+traj_max_len = max([len(ep.observations) for ep in episodes])
+
+def episode_iterator(episodes : list[script.Episode]):
+    # ...existing code...
+
+dataset = script.GoalDataset(env, horizon=cfg.horizon, normalizer=script.normalization.LimitsNormalizer, episode_itr=episode_iterator(episodes), max_path_length=1000, max_n_episodes=10000, termination_penalty=None, use_padding=True)
+
+renderer = script.MinigridRenderer(env, feature_coder)
+
+model = script.TemporalUnet(
+    horizon=cfg.horizon,
+    transition_dim=observation_dim + action_dim,
+    cond_dim=observation_dim,
+    dim_mults=cfg.dim_mults
+).to(device)
+
+diffusion = script.GaussianDiffusion(
+    model,
+    horizon=cfg.horizon,
+    observation_dim=observation_dim,
+    action_dim=action_dim,
+    n_timesteps=cfg.diffusion.n_diffusion_steps,
+    loss_type='l1',
+    clip_denoised=cfg.diffusion.clip_denoised,
+    predict_epsilon=cfg.diffusion.predict_epsilon,
+    action_weight=cfg.diffusion.action_weight,
+    loss_discount=cfg.diffusion.loss_discount
+).to(device)
+
+trainer = script.Trainer(
+    diffusion_model=diffusion,
+    dataset=dataset,
+    renderer=renderer,
+    ema_decay=cfg.trainer.ema_decay,
+    results_folder=str(exp.results_dir),
+    train_batch_size=cfg.trainer.train_batch_size,
+    train_lr=cfg.trainer.train_lr,
+    gradient_accumulate_every=cfg.trainer.gradient_accumulate_every,
+    log_freq=cfg.trainer.log_freq,
+    sample_freq=cfg.trainer.sample_freq,
+    save_freq=cfg.trainer.save_freq,
+    label_freq=cfg.trainer.label_freq,
+    save_parallel=cfg.trainer.save_parallel,
+    n_reference=cfg.trainer.n_reference,
+    n_samples=cfg.trainer.n_samples,
+    bucket=cfg.trainer.bucket,
+)
+trainer.n_train_steps = cfg.trainer.n_train_steps
+trainer.n_steps_per_epoch = cfg.trainer.n_steps_per_epoch
+trainer.savepath = str(exp.saves_dir)
 
 #---------------------------------- loading ----------------------------------#
 
-#diffusion_experiment = utils.load_diffusion(args.logbase, args.dataset, args.diffusion_loadpath, epoch=args.diffusion_epoch)
-
 dataset = script.dataset
 renderer = script.renderer
-script.trainer.load(epoch = 0) # epoch 0 is for all models in 0:9999 steps
-diffusion = script.trainer.ema_model # / trainer.model; see what works better
+trainer.load(epoch=0)
+diffusion = trainer.ema_model
 obs_dim = script.observation_dim
 action_dim = script.action_dim
 
-policy = Policy(diffusion, dataset.normalizer)
+policy = script.Policy(diffusion, dataset.normalizer)
 
 #---------------------------------- main loop ----------------------------------#
 
 observation, info = env.reset()
-
-def eval_consistency(base_env, observations, actions, until_termination = True):
-    """"
-    Compute the ratio of actions that are consistent with the observations based on the environment.
-    Note that the environment is reset at each step to the state of the observation.
-    """
-    initial_state = state_from_env(base_env)
-    assert len(observations) == len(actions)
-    n_actions = len(observations) - 1
-    
-    N_consistent = 0
-    for i in range(n_actions): 
-        state = observation_from_sampled(observations[i])
-        reset_env_state(base_env, state)
-
-        action = action_from_repr(actions[i])
-        obs, reward, term, trunc, info = base_env.step(action)
-        next_state = state_from_env(base_env)
-        if np.all(next_state == observation_from_sampled(observations[i+1])):
-            N_consistent += 1
-        if term and until_termination:
-            n_actions = i + 1
-            break 
-        
-    print("N_consistent: ", N_consistent)
-    ratio = N_consistent / (n_actions - 1)
-    print("Consistency ratio: ", ratio)
-
-    reset_env_state(base_env, initial_state)
-    return ratio
-
 
 # find goal position in grid
 

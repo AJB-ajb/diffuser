@@ -12,6 +12,8 @@ from minigrid.core.actions import Actions
 from minigrid.minigrid_env import MiniGridEnv
 from minigrid.wrappers import ImgObsWrapper, RGBImgPartialObsWrapper
 
+from stable_baselines3 import PPO
+
 import empty_env
 from minigrid_base import EnvFeatureCoderBase, Episode
 
@@ -137,7 +139,13 @@ class PolicyRunner:
             unwrapped.render_mode = "rgb_array"
         return ret
     
-env_id = "MiniGrid-Empty-16x16-v0"
+import mgcfg
+
+cfg = mgcfg.base_cfg
+exp = mgcfg.Experiment(cfg)
+# cfg.collection.id = "policy_random_1000"
+
+env_id = cfg.env_id
 tile_size = 32
 agent_view = False
 agent_view_size = 7
@@ -149,55 +157,16 @@ env: MiniGridEnv = gym.make(
         agent_pov=agent_view,
         agent_view_size=agent_view_size,
         screen_size=screen_size,
-        max_episode_steps=128,
+        max_episode_steps=cfg.horizon,
     )
-
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-import torch
-from torch import nn
-
-# class MinigridFeaturesExtractor(BaseFeaturesExtractor):
-#     def __init__(self, observation_space: gym.Space, features_dim: int = 512, normalized_image: bool = False) -> None:
-#         super().__init__(observation_space, features_dim)
-#         n_input_channels = observation_space.shape[0]
-#         self.cnn = nn.Sequential(
-#             nn.Conv2d(n_input_channels, 16, (2, 2)),
-#             nn.ReLU(),
-#             nn.Conv2d(16, 32, (2, 2)),
-#             nn.ReLU(),
-#             nn.Conv2d(32, 64, (2, 2)),
-#             nn.ReLU(),
-#             nn.Flatten(),
-#         )
-# 
-#         # Compute shape by doing one forward pass
-#         with torch.no_grad():
-#             n_flatten = self.cnn(torch.as_tensor(observation_space.sample()[None]).float()).shape[1]
-# 
-#         self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
-# 
-#     def forward(self, observations: torch.Tensor) -> torch.Tensor:
-#         return self.linear(self.cnn(observations))
-    
-from stable_baselines3 import PPO
-
-# policy_kwargs = dict(
-#     features_extractor_class=MinigridFeaturesExtractor,
-#     features_extractor_kwargs=dict(features_dim=128),
-# )
 
 env = ImgObsWrapper(env)
 
-run_name = "ppo_minigrid_2e5_new"
-
-data_path = Path(__file__).parents[1] / "data" / env_id
-data_path.mkdir(exist_ok= True, parents = True)
-
-model_path = data_path / "models" / "ppo_minigrid_2e5" # "ppo_minigrid_2e5"
-policy = PPO.load(model_path, env = env)
+policy_path = exp.policy_path
+policy = PPO.load(policy_path, env=env)
 
 coder = empty_env.EmptyEnvCircFC(env_id=env_id)
-exec = PolicyRunner(env=env, policy=policy, env_feature_coder = coder, seed = None, N_episodes2collect=10, render_on_screen=False)
+exec = PolicyRunner(env=env, policy=policy, env_feature_coder=coder, seed=None, N_episodes2collect=cfg.collection.n_episodes, render_on_screen=False)
 
 exec.run()
 
@@ -218,14 +187,16 @@ for episode in exec.collected_episodes:
 print("Average state consistency (should be 1.): ", np.mean(state_consistencies))
 print("Average action consistency (should be 1.): ", np.mean(action_consistency))
 
-if exec.N_episodes2collect < 100:
+try:
     assert np.allclose(state_consistencies, 1.0)
     assert np.allclose(action_consistencies, 1.0)
+except AssertionError as e:
+    print(f"Consistency check failed: {e}")
 
 # pad trajectories with the last state and add terminal array
 store = True
 if store:
     import pickle
     # store trajectories and rewards in a pickle
-    with open(data_path / f'{run_name}_trajectories.pkl', 'wb') as f:
+    with open(exp.collected_episodes_path, 'wb') as f:
         pickle.dump(exec.collected_episodes, f)

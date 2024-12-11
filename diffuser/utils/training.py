@@ -221,6 +221,7 @@ class Trainer(object):
 
             ## [ n_samples x horizon x observation_dim ]
             normed_observations = samples[:, :, self.dataset.action_dim:]
+            normed_actions = samples[:, :, :self.dataset.action_dim]
 
             # [ 1 x 1 x observation_dim ]
             normed_conditions = to_np(batch.conditions[0])[:,None]
@@ -235,8 +236,10 @@ class Trainer(object):
                 normed_observations
             ], axis=1)
 
+
             ## [ n_samples x (horizon + 1) x observation_dim ]
             observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
+            actions = self.dataset.normalizer.unnormalize(normed_actions, 'actions')
 
             #### @TODO: remove block-stacking specific stuff
             # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
@@ -244,4 +247,5 @@ class Trainer(object):
             ####
 
             savepath = os.path.join(self.logdir, f'sample-{self.step}-{i}.png')
+            self.renderer.evaluate(observations, actions)
             self.renderer.composite(savepath, observations)

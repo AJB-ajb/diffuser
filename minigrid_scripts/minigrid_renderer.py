@@ -7,6 +7,9 @@ import imageio
 
 from minigrid.core.actions import Actions
 from minigrid_base import EnvFeatureCoderBase
+from minigrid_base import Episode
+
+import mgcfg
 
 MAZE_BOUNDS = {
     'maze2d-umaze-v1': (0, 5, 0, 5),
@@ -16,10 +19,12 @@ MAZE_BOUNDS = {
 
 class MinigridRenderer:
 
-    def __init__(self, env, feature_coder:EnvFeatureCoderBase ): # env should contain the base environment
-        self.feature_coder = feature_coder
-        self.base_env = env.unwrapped
-        self.env = env
+    def __init__(self, exp : mgcfg.Experiment, cfg:mgcfg.Cfg): # changed parameters
+        self.exp = exp
+        self.cfg = cfg
+        self.env = exp.env
+        self.feature_coder = exp.coder
+        self.base_env = self.env.unwrapped
         self.grid = self.base_env.grid
         self._background = np.zeros((self.grid.width, self.grid.height)) # boolean image of gridsize, where 1 is wall and 0 is empty
         self._remove_margins = False
@@ -32,11 +37,6 @@ class MinigridRenderer:
         plt.imshow(self._background * .5,
             extent=self._extent, cmap=plt.cm.binary, vmin=0, vmax=1)
         
-        # evaluate consistency
-        obs_reprs = observations
-        state_trans_cons = self.feature_coder.state_transition_consistency(obs_reprs, ε = 2e-1, verbose = False)
-        print(f"State transition consistency: {state_trans_cons}")
-
         path_length = len(observations)
         # flip direction of y 
         plt.gca().invert_yaxis()
@@ -61,6 +61,42 @@ class MinigridRenderer:
         plt.title(title)
         img = plot2img(fig, remove_margins=self._remove_margins)
         return img
+    
+    def evaluate(self, observations, actions):
+        # observations: [ n_samples x (horizon + 1) x observation_dim ]
+        # actions: [ n_samples x (horizon + 1) x action_dim ]
+
+        # evaluate consistency
+        
+        state_consistencies = []
+        action_consistencies = []
+        for i_sample in range(len(observations)):
+            obs_reprs = observations[i_sample, :]
+            action_reprs = actions[i_sample, :] # last action isn't counted
+            state_consistencies.append(
+                self.feature_coder.state_transition_consistency(obs_reprs, ε = 2e-1, verbose = False)
+                )
+            action_consistencies.append(
+                self.feature_coder.action_consistency(obs_reprs, action_reprs, ε = 2e-1, verbose = False)
+            )
+
+        consistencies = {'avg_state_consistency': np.mean(state_consistencies), 'avg_action_consistency': np.mean(action_consistencies)}
+
+        n_state_successes = sum((1 for s in state_consistencies if s == 1.))
+        n_action_successes = sum((1 for a in action_consistencies if a == 1.))
+        successes = {'state_success_rate': n_state_successes / len(state_consistencies), 'action_success_rate': n_action_successes / len(action_consistencies)}
+
+        # log consistency metrics to tensorboard
+        trainer = self.exp.trainer
+        step = trainer.step
+        self.exp.summary_writer.add_scalars('consistency', consistencies, step)
+        self.exp.summary_writer.add_scalars('successes', successes, step)
+
+        def dict_str(d):
+            return " | ".join([f"{k}: {v:.2e}" for k, v in d.items()])
+
+        print(f"Step {step}: \n{dict_str(consistencies)} | \n{dict_str(successes)}")
+        
 
     def composite(self, savepath, paths, ncol=5, **kwargs):
         '''
@@ -68,6 +104,7 @@ class MinigridRenderer:
             observations : [ n_paths x horizon x 2 ]
         '''
         assert len(paths) % ncol == 0, 'Number of paths must be divisible by number of columns'
+
 
         images = []
         for path, kw in zipkw(paths, **kwargs):
