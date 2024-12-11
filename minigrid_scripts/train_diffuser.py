@@ -108,6 +108,14 @@ diffusion = GaussianDiffusion(
     loss_discount=cfg.diffusion.loss_discount
 ).to(device)
 
+
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
+
+model.compile()
+diffusion.compile()
+
+
 trainer = Trainer(
     diffusion_model=diffusion,
     dataset=dataset,
