@@ -62,7 +62,7 @@ class MinigridRenderer:
         img = plot2img(fig, remove_margins=self._remove_margins)
         return img
     
-    def evaluate(self, observations, actions):
+    def evaluate(self, observations, actions, model_name):
         # observations: [ n_samples x (horizon + 1) x observation_dim ]
         # actions: [ n_samples x (horizon + 1) x action_dim ]
 
@@ -80,11 +80,11 @@ class MinigridRenderer:
                 self.feature_coder.action_consistency(obs_reprs, action_reprs, ε = 2e-1, verbose = False)
             )
 
-        consistencies = {'avg_state_consistency': np.mean(state_consistencies), 'avg_action_consistency': np.mean(action_consistencies)}
+        consistencies = {f'{model_name}_avg_state_consistency': np.mean(state_consistencies), f'{model_name}_avg_action_consistency': np.mean(action_consistencies)}
 
         n_state_successes = sum((1 for s in state_consistencies if s == 1.))
         n_action_successes = sum((1 for a in action_consistencies if a == 1.))
-        successes = {'state_success_rate': n_state_successes / len(state_consistencies), 'action_success_rate': n_action_successes / len(action_consistencies)}
+        successes = {f'{model_name}_state_success_rate': n_state_successes / len(state_consistencies), f'{model_name}_action_success_rate': n_action_successes / len(action_consistencies)}
 
         # log consistency metrics to tensorboard
         trainer = self.exp.trainer

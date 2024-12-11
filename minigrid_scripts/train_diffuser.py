@@ -1,4 +1,5 @@
 #0import config.locomotion
+import math
 
 from diffuser.models.diffusion import GaussianDiffusion
 from diffuser.models import TemporalUnet
@@ -33,6 +34,7 @@ if len(sys.argv) > 1:
 else:
     # test
     cfg = mgcfg.empty_env_cfg
+    cfg.trainer.n_train_steps = 1000
     print("Using default empty env configuration for testing")
 
 
@@ -76,7 +78,7 @@ dataset = GoalDataset(
     horizon=cfg.horizon,
     normalizer=normalization.LimitsNormalizer,
     episode_itr=episode_iterator(episodes),
-    max_path_length=1000, 
+    max_path_length=2*cfg.horizon, 
     max_n_episodes=10000,
     termination_penalty=None,
     use_padding=True
@@ -109,11 +111,17 @@ diffusion = GaussianDiffusion(
 ).to(device)
 
 
-import torch._dynamo
-torch._dynamo.config.suppress_errors = True
+try:
+    print("Compiling model and diffusion...")
+    # if compile is available, use it
+    #torch.set_float32_matmul_precision('high') 
+    model = th.compile(model) # improves train speed by roughly 2% - 10%
+    model = th.compile(diffusion)
 
-model.compile()
-diffusion.compile()
+    print("Model compiled successfully")
+
+except Exception as e:
+    print(f"Error while compiling model and diffusion: {e}")
 
 
 trainer = Trainer(
@@ -139,6 +147,7 @@ trainer.n_steps_per_epoch = cfg.trainer.n_steps_per_epoch
 trainer.savepath = str(exp.saves_dir)
 
 exp.trainer = trainer
+trainer.cfg = cfg
 
 # from maze2d.py base config (?)
 #    loss_type='l2',
@@ -156,8 +165,8 @@ if __name__ == '__main__':
     loss.backward()
     print('✓')
 
-    n_epochs = int(trainer.n_train_steps // trainer.n_steps_per_epoch)
+    n_epochs = math.ceil(trainer.n_train_steps / trainer.n_steps_per_epoch)
 
     for i in range(n_epochs):
         print(f'Epoch {i} / {n_epochs} | {trainer.savepath}')
-        trainer.train(n_train_steps=trainer.n_steps_per_epoch)
+        trainer.train(n_train_steps=max(trainer.n_steps_per_epoch, trainer.n_train_steps - trainer.step))

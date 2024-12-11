@@ -202,50 +202,45 @@ class Trainer(object):
         '''
             renders samples from (ema) diffusion model
         '''
-        for i in range(batch_size):
-
-            ## get a single datapoint
-            batch = self.dataloader_vis.__next__()
-            conditions = to_device(batch.conditions, 'cuda:0')
-
-            ## repeat each item in conditions `n_samples` times
-            conditions = apply_dict(
-                einops.repeat,
-                conditions,
-                'b d -> (repeat b) d', repeat=n_samples,
-            )
-
-            ## [ n_samples x horizon x (action_dim + observation_dim) ]
-            samples = self.ema_model.conditional_sample(conditions)
-            samples = to_np(samples)
-
-            ## [ n_samples x horizon x observation_dim ]
-            normed_observations = samples[:, :, self.dataset.action_dim:]
-            normed_actions = samples[:, :, :self.dataset.action_dim]
-
-            # [ 1 x 1 x observation_dim ]
-            normed_conditions = to_np(batch.conditions[0])[:,None]
-
-            # from diffusion.datasets.preprocessing import blocks_cumsum_quat
-            # observations = conditions + blocks_cumsum_quat(deltas)
-            # observations = conditions + deltas.cumsum(axis=1)
-
-            ## [ n_samples x (horizon + 1) x observation_dim ]
-            normed_observations = np.concatenate([
-                np.repeat(normed_conditions, n_samples, axis=0),
-                normed_observations
-            ], axis=1)
-
-
-            ## [ n_samples x (horizon + 1) x observation_dim ]
-            observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
-            actions = self.dataset.normalizer.unnormalize(normed_actions, 'actions')
-
-            #### @TODO: remove block-stacking specific stuff
-            # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
-            # observations = blocks_add_kuka(observations)
-            ####
-
-            savepath = os.path.join(self.logdir, f'sample-{self.step}-{i}.png')
-            self.renderer.evaluate(observations, actions)
-            self.renderer.composite(savepath, observations)
+        for model_name in ['model', 'ema_model']:
+            model = getattr(self, model_name)
+            for i in range(batch_size):
+    
+                ## get a single datapoint
+                batch = self.dataloader_vis.__next__()
+                conditions = to_device(batch.conditions, 'cuda:0')
+    
+                ## repeat each item in conditions `n_samples` times
+                conditions = apply_dict(
+                    einops.repeat,
+                    conditions,
+                    'b d -> (repeat b) d', repeat=n_samples,
+                )
+    
+                ## [ n_samples x horizon x (action_dim + observation_dim) ]
+                samples = model.conditional_sample(conditions)
+                samples = to_np(samples)
+    
+                ## [ n_samples x horizon x observation_dim ]
+                normed_observations = samples[:, :, self.dataset.action_dim:]
+                normed_actions = samples[:, :, :self.dataset.action_dim]
+    
+                # [ 1 x 1 x observation_dim ]
+                normed_conditions = to_np(batch.conditions[0])[:,None]
+    
+    
+                ## [ n_samples x (horizon + 1) x observation_dim ]
+                normed_observations = np.concatenate([
+                    np.repeat(normed_conditions, n_samples, axis=0),
+                    normed_observations
+                ], axis=1)
+    
+    
+                ## [ n_samples x (horizon + 1) x observation_dim ]
+                observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
+                actions = self.dataset.normalizer.unnormalize(normed_actions, 'actions')
+    
+                savepath = os.path.join(self.logdir, f'sample-{model_name}-{self.step}-{i}.png')
+                self.renderer.evaluate(observations, actions, model_name = model_name)
+                self.renderer.composite(savepath, observations)
+    
