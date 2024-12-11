@@ -218,7 +218,7 @@ class Trainer(object):
                 )
     
                 ## [ n_samples x horizon x (action_dim + observation_dim) ]
-                samples = model.conditional_sample(conditions)
+                samples = model.conditional_sample(conditions, verbose = False)
                 samples = to_np(samples)
     
                 ## [ n_samples x horizon x observation_dim ]

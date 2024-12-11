@@ -197,6 +197,7 @@ base_cfg = Cfg(
     ),
     horizon=128,
     dim_mults=[1, 4, 8],
+    max_path_length=256,
     diffusion=Cfg(
         n_diffusion_steps=64,
         action_weight=1,
