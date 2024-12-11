@@ -54,6 +54,20 @@ class Cfg(collections.abc.MutableMapping):
         parts = [' ' * (indent * 4) + p for p in parts]
         return "".join(parts)
     
+    def id(self):
+        """
+            Return an identifier for the values of the configuration.
+            Concatenates the displayable values of the configuration, floats in the format .2e .
+        """
+        def value(v):
+            if isinstance(v, Cfg):
+                return v.id()
+            elif isinstance(v, float):
+                return f"{v:.2e}"
+            else:
+                return str(v)
+        return "_".join([value(v) for v in self.__dict__.values()])
+    
     @staticmethod
     def load_from_json(path): 
         """
@@ -194,6 +208,7 @@ base_cfg = Cfg(
     collection = Cfg(
         id="policy_random_1000", # default: use policy and random exploration in between
         n_episodes=1000,
+        exploration_probs=[0.0, 0.2, 0.4]
     ),
     horizon=128,
     dim_mults=[1, 4, 8],

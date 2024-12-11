@@ -46,10 +46,17 @@ class MinigridRenderer:
         plt.scatter(observations[[0, -1],0], observations[[0,-1],1], c='black', zorder=10, marker='x')
         plt.scatter(observations[:,0], observations[:,1], c=colors, zorder=20)
         # td: plot arrows in the direction of the orientation
-        for i, (x, y, direction) in enumerate(observations):
-            angle = direction * np.pi / 2
-            head_length = 0.3
-            plt.arrow(x, y, head_length * np.cos(angle), head_length * np.sin(angle), color=colors[i], head_width=0.2, head_length=0.1)
+        for i, obs_repr in enumerate(observations):
+            x, y = obs_repr[0:2]
+            if len(obs_repr) == 3:
+                direction = obs_repr[2]
+                angle = direction * np.pi / 2
+                head_length = 0.3
+                plt.arrow(x, y, head_length * np.cos(angle), head_length * np.sin(angle), color=colors[i], head_width=0.2, head_length=0.1)
+            elif len(obs_repr) == 4:
+                # direction is encoded as (cos(φ), sin(φ))
+                dx, dy = obs_repr[2:4]
+                plt.arrow(x, y, dx, dy, color=colors[i], head_width=0.2, head_length=0.1)
             
         # color different actions in different colors
         # where get the actions from?

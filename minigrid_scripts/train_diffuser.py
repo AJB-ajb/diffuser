@@ -34,7 +34,8 @@ if len(sys.argv) > 1:
 else:
     # test
     cfg = mgcfg.empty_env_cfg
-    cfg.trainer.n_train_steps = 1000
+    cfg.trainer['n_train_steps'] = 1000
+    cfg['feature_coder'] = 'EmptyEnvCircFC'
     print("Using default empty env configuration for testing")
 
 
@@ -45,7 +46,7 @@ device = 'cuda' if th.cuda.is_available() else 'cpu'
 
 env = gym.make(cfg.env_id, render_mode="rgb_array")
 
-fc = feature_coder = EmptyEnvDiscFC(env_id=cfg.env_id)
+fc = feature_coder = exp.coder
 observation_dim = fc.observation_dim
 action_dim = fc.action_dim
 

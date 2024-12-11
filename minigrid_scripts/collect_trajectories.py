@@ -64,13 +64,14 @@ def collect_episodes(policy, env, coder : EnvFeatureCoderBase, cfg: mgcfg.Cfg):
         cur_observation = [coder.obs_repr_from_env(base_env)]
         cur_actions = []
 
-        random_prob = np.random.choice([0.0, 0.2, 0.4])
+        # probability with which to take a random action
+        random_prob = np.random.choice(cfg.collection.exploration_probs)
         done = trunc = False
         
 
         while not done and not trunc:
-            if np.random.rand() < random_prob:
-                action = np.random.randint(0, 3)
+            if np.random.rand() <= random_prob:
+                action = np.random.randint(0, 2) # don't allow done action
             else:
                 action, _ = policy.predict(obs, deterministic=True)
 
@@ -113,7 +114,7 @@ if __name__ == '__main__':
     coder = exp.coder
     state_consistencies = []
     action_consistencies = []
-    for episode in episodes:
+    for episode in episodes[0:min(10, len(episodes))]:
         # test state consistency
         raw_obs = episode.observations
         obs_reprs = [coder.raw_obs_to_repr(obs) for obs in raw_obs]
