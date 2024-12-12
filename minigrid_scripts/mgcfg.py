@@ -147,7 +147,7 @@ class Experiment:
         import gymnasium as gym
         from minigrid.wrappers import ImgObsWrapper
 
-        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.horizon-1) # -1 steps needed to have at max horizon observations
+        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.max_path_length-1) # -1 steps needed to have at max horizon observations
         self.env = ImgObsWrapper(env)
 
         import importlib

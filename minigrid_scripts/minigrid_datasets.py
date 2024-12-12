@@ -12,8 +12,8 @@ ValueBatch = namedtuple('ValueBatch', 'trajectories conditions values')
 
 class SequenceDataset(torch.utils.data.Dataset):
 
-    def __init__(self, env, episode_itr, horizon=64, normalizer = normalization.LimitsNormalizer,  max_path_length=1000,
-        max_n_episodes=10000, termination_penalty=0, use_padding=True):
+    def __init__(self, env, episode_itr, max_path_length, horizon, 
+        max_n_episodes, normalizer = normalization.LimitsNormalizer, termination_penalty=0, use_padding=True):
         # self.preprocess_fn = get_preprocess_fn(preprocess_fns, env)
         self.env = env
         self.horizon = horizon
@@ -95,5 +95,5 @@ class GoalDataset(SequenceDataset):
         '''
         return {
             0: observations[0],
-            self.horizon - 1: observations[-1],
+            self.horizon-1: observations[-1],
         }
