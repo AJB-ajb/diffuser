@@ -17,6 +17,10 @@ from minigrid_base import EnvFeatureCoderBase, Episode
 import mgcfg
 import tqdm
 
+def print_quant(name, data):
+    print(f"{name}: {np.mean(data)} ± {np.std(data)}, min: {np.min(data)}, max: {np.max(data)}")
+
+    
 
 def evaluate_policy(policy, env, n_episodes=10):
     episode_rewards = []
@@ -40,19 +44,19 @@ def evaluate_policy(policy, env, n_episodes=10):
 
     return {"avg_reward": avg_reward, "avg_success": avg_success}
 
-def collect_episodes(policy, env, coder : EnvFeatureCoderBase, cfg: mgcfg.Cfg):
+def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, possible_actions=None):
     """
     Collects trajectories using the policy and the environment.
     """
+    if possible_actions is None:
+        possible_actions = [Actions.forward, Actions.left, Actions.right]
+
     rewards = []
-
-    base_env : MiniGridEnv = env.unwrapped
-
+    base_env: MiniGridEnv = env.unwrapped
     episodes = []
     n_successes = 0
 
     for i_traj in tqdm.tqdm(range(cfg.collection.n_episodes)):
-
         # reset to random location and direction
         base_env.agent_start_pos = np.random.randint([1, 1], [base_env.width-1, base_env.height-1])
         base_env.agent_start_dir = np.random.randint(0, 4)
@@ -67,27 +71,42 @@ def collect_episodes(policy, env, coder : EnvFeatureCoderBase, cfg: mgcfg.Cfg):
         # probability with which to take a random action
         random_prob = np.random.choice(cfg.collection.exploration_probs)
         done = trunc = False
-        
+
 
         while not done and not trunc:
+            prev_raw_obs = coder.raw_obs_from_env(base_env)
+
             if np.random.rand() <= random_prob:
-                action = np.random.randint(0, 2) # don't allow done action
+                action = np.random.choice(possible_actions)
             else:
                 action, _ = policy.predict(obs, deterministic=True)
 
             obs, reward, done, trunc, info = env.step(action)
             episode_reward += reward
+            
+            # exclude (action, observation) pairs if the state is the same in order to not learn too many transitions to the same state
+            if np.all(prev_raw_obs == coder.raw_obs_from_env(base_env)):
+                continue
 
             cur_actions.append(action)
             cur_observation.append(coder.obs_repr_from_env(base_env))
 
-        cur_actions.append(Actions.done)
+        cur_actions.append(Actions.forward) # add some last action
 
         rewards.append(episode_reward)
         if done:
             n_successes += 1
         
         episodes.append(Episode(observations=cur_observation, actions=cur_actions, reward=episode_reward))
+
+    print("Collected episodes: ", len(episodes))
+    print_quant("Reward", [ep.reward for ep in episodes])
+    print("Success rate: ", n_successes / len(episodes))
+    print_quant("Length", [len(ep.observations) for ep in episodes])
+
+    for action in possible_actions:
+        action_name = action.name if hasattr(action, 'name') else str(action)
+        print_quant(f"{action_name} actions", [sum([a == action for a in ep.actions]) for ep in episodes])
 
     return episodes
 
@@ -97,11 +116,13 @@ if __name__ == '__main__':
     if len(sys.argv) < 2: 
         # testing
         cfg = mgcfg.empty_env_cfg
-        cfg.collection.n_episodes = 5
-
+        
+        cfg.collection['exploration_probs'] = [1.0]
+        cfg.collection['n_episodes'] = 10
         print("Using default empty env configuration")
     else:
         cfg = mgcfg.Cfg.load_from_args()
+
     exp = mgcfg.Experiment(cfg)
     exp.instantiate()
 

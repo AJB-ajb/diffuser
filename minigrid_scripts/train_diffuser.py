@@ -35,7 +35,7 @@ else:
     # test
     cfg = mgcfg.empty_env_cfg
     cfg.trainer['n_train_steps'] = 1000
-    cfg['feature_coder'] = 'EmptyEnvCircFC'
+    cfg['feature_coder'] = 'EmptyEnvDiscFC'
     print("Using default empty env configuration for testing")
 
 

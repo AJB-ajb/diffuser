@@ -146,9 +146,8 @@ class Experiment:
         """
         import gymnasium as gym
         from minigrid.wrappers import ImgObsWrapper
-        from empty_env import EmptyEnvCircFC
 
-        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.horizon)
+        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.horizon-1) # -1 steps to have at max horizon observations
         self.env = ImgObsWrapper(env)
 
         import importlib
@@ -212,7 +211,7 @@ base_cfg = Cfg(
     ),
     horizon=128,
     dim_mults=[1, 4, 8],
-    max_path_length=256,
+    max_path_length=128,
     diffusion=Cfg(
         n_diffusion_steps=64,
         action_weight=1,
