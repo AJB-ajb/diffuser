@@ -172,4 +172,4 @@ if __name__ == '__main__':
 
     for i in range(n_epochs):
         print(f'Epoch {i} / {n_epochs} | {trainer.savepath}')
-        trainer.train(n_train_steps=max(trainer.n_steps_per_epoch, trainer.n_train_steps - trainer.step))
+        trainer.train(n_train_steps=min(trainer.n_steps_per_epoch, trainer.n_train_steps - trainer.step))
