@@ -46,18 +46,18 @@ traj_max_len = max([len(ep.observations) for ep in episodes])
 def episode_iterator(episodes : list[script.Episode]):
     # ...existing code...
 
-dataset = script.GoalDataset(env, horizon=cfg.horizon, normalizer=script.normalization.LimitsNormalizer, episode_itr=episode_iterator(episodes), max_path_length=1000, max_n_episodes=10000, termination_penalty=None, use_padding=True)
+dataset = GoalDataset(env, horizon=cfg.horizon, normalizer=script.normalization.LimitsNormalizer, episode_itr=episode_iterator(episodes), max_path_length=1000, max_n_episodes=10000, termination_penalty=None, use_padding=True)
 
-renderer = script.MinigridRenderer(env, feature_coder)
+renderer = MinigridRenderer(env, feature_coder)
 
-model = script.TemporalUnet(
+model = TemporalUnet(
     horizon=cfg.horizon,
     transition_dim=observation_dim + action_dim,
     cond_dim=observation_dim,
     dim_mults=cfg.dim_mults
 ).to(device)
 
-diffusion = script.GaussianDiffusion(
+diffusion = GaussianDiffusion(
     model,
     horizon=cfg.horizon,
     observation_dim=observation_dim,
@@ -70,7 +70,7 @@ diffusion = script.GaussianDiffusion(
     loss_discount=cfg.diffusion.loss_discount
 ).to(device)
 
-trainer = script.Trainer(
+trainer = Trainer(
     diffusion_model=diffusion,
     dataset=dataset,
     renderer=renderer,
@@ -94,8 +94,6 @@ trainer.savepath = str(exp.saves_dir)
 
 #---------------------------------- loading ----------------------------------#
 
-dataset = script.dataset
-renderer = script.renderer
 trainer.load(epoch=0)
 diffusion = trainer.ema_model
 obs_dim = script.observation_dim

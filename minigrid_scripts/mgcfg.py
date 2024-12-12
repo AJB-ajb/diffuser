@@ -147,7 +147,7 @@ class Experiment:
         import gymnasium as gym
         from minigrid.wrappers import ImgObsWrapper
 
-        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.horizon-1) # -1 steps to have at max horizon observations
+        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.horizon-2) # -1 steps needed to have at max horizon observations; somehow -2 needed to not have some dataset error
         self.env = ImgObsWrapper(env)
 
         import importlib
@@ -210,8 +210,8 @@ base_cfg = Cfg(
         exploration_probs=[0.0, 0.2, 0.4]
     ),
     horizon=128,
-    dim_mults=[1, 4, 8],
     max_path_length=128,
+    dim_mults=[1, 4, 8],
     diffusion=Cfg(
         n_diffusion_steps=64,
         action_weight=1,
