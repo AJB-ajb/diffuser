@@ -44,7 +44,9 @@ class MinigridRenderer:
 
         # plot start and end points
         plt.scatter(observations[[0, -1],0], observations[[0,-1],1], c='black', zorder=10, marker='x')
-        plt.scatter(observations[:,0], observations[:,1], c=colors, zorder=20)
+        
+        #plt.scatter(observations[:,0], observations[:,1], c=colors, zorder=20)
+
         # td: plot arrows in the direction of the orientation
         for i, obs_repr in enumerate(observations):
             x, y = obs_repr[0:2]
