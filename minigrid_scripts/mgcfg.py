@@ -147,7 +147,7 @@ class Experiment:
         import gymnasium as gym
         from minigrid.wrappers import ImgObsWrapper
 
-        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.horizon-2) # -1 steps needed to have at max horizon observations; somehow -2 needed to not have some dataset error
+        env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.horizon-1) # -1 steps needed to have at max horizon observations
         self.env = ImgObsWrapper(env)
 
         import importlib
@@ -241,6 +241,9 @@ base_cfg = Cfg(
 empty_env_cfg = Cfg(**base_cfg)
 empty_env_cfg['name'] = "empty_env"
 empty_env_cfg['run_name'] = "run0"
+empty_env_cfg['horizon'] = 32
+empty_env_cfg['max_path_length'] = 64
+
 empty_env_cfg['env_id'] = "MiniGrid-Empty-16x16-v0"
 empty_env_cfg['env_module'] = "empty_env"
 empty_env_cfg['feature_coder'] = "EmptyEnvDiscFC"

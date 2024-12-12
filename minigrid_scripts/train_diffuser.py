@@ -34,8 +34,9 @@ if len(sys.argv) > 1:
 else:
     # test
     cfg = mgcfg.empty_env_cfg
+    cfg['horizon'] = 32
     cfg.trainer['n_train_steps'] = 1000
-    cfg['max_path_length'] = 128
+    cfg['max_path_length'] = 2*cfg.horizon # must be larger than horizon
     cfg['feature_coder'] = 'EmptyEnvDiscFC'
     print("Using default empty env configuration for testing")
 
