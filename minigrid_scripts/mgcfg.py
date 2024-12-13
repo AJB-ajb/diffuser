@@ -204,7 +204,7 @@ class Experiment:
     
     @property
     def policy_path(self): # standard path to load the policy from
-        return self.log_dir / "agent_models" / f"{self.cfg.policy.id}.zip"
+        return self.log_dir / "agent_models" / f"{self.cfg.policy.id}"
     
     # where to store the collected episodes
     
