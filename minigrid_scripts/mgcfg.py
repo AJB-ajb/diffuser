@@ -10,6 +10,8 @@ import json
 import collections.abc
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+import pickle
 
 # minigrid-diffuser experiment configuration
 class Cfg(collections.abc.MutableMapping):
@@ -142,10 +144,15 @@ class Experiment:
 
     def instantiate(self):
         """
-            Instantiate the environment and the feature coder    
+            Instantiate the environment and the feature coder and set the seeds
         """
         import gymnasium as gym
         from minigrid.wrappers import ImgObsWrapper
+
+        import torch as th
+        import numpy as np
+        th.manual_seed(0)
+        np.random.seed(0)
 
         env = gym.make(self.cfg.env_id, render_mode="rgb_array", max_episode_steps=self.cfg.max_path_length-1) # -1 steps needed to have at max horizon observations
         self.env = ImgObsWrapper(env)
@@ -156,6 +163,17 @@ class Experiment:
         
         self.coder = coder_class(env_id=self.cfg.env_id)
         self.summary_writer = SummaryWriter(log_dir=self.tensorboard_logdir)
+        self.metrics = {}
+
+    def save_state(self):
+        """
+            Save the state of the experiment
+            - saves the current metrics to a pickle file
+        """
+        if not hasattr(self, "metrics"):
+            self.metrics = {}
+        with open(str(self.metrics_file), "wb") as f:
+            pickle.dump(self.metrics, f)
 
     @property 
     def model_dir(self): # to save trained diffuser models
@@ -169,6 +187,10 @@ class Experiment:
     @property
     def saves_dir(self):
         return self.run_log_dir / "saves"
+    
+    @property
+    def metrics_file(self):
+        return self.results_dir / "metrics.pkl"
     
     @property
     def repo_dir(self):
@@ -251,6 +273,10 @@ empty_env_cfg['policy']['id'] = "cnn_2e5"
 empty_env_cfg['policy']['n_timesteps'] = 2e5
 empty_env_cfg['collection']['id'] = "policy_random_1000"
 empty_env_cfg['collection']['n_episodes'] = 1000
+
+
+def print_quant(name, data):
+    print(f"{name}: {np.mean(data)} ± {np.std(data)}, min: {np.min(data)}, max: {np.max(data)}")
 
 
 if __name__ == "__main__":

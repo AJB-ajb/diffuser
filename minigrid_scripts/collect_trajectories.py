@@ -17,11 +17,6 @@ from minigrid_base import EnvFeatureCoderBase, Episode
 import mgcfg
 import tqdm
 
-def print_quant(name, data):
-    print(f"{name}: {np.mean(data)} ± {np.std(data)}, min: {np.min(data)}, max: {np.max(data)}")
-
-    
-
 def evaluate_policy(policy, env, n_episodes=10):
     episode_rewards = []
     n_successes = 0
@@ -100,13 +95,13 @@ def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, po
         episodes.append(Episode(observations=cur_observation, actions=cur_actions, reward=episode_reward))
 
     print("Collected episodes: ", len(episodes))
-    print_quant("Reward", [ep.reward for ep in episodes])
+    mgcfg.print_quant("Reward", [ep.reward for ep in episodes])
     print("Success rate: ", n_successes / len(episodes))
-    print_quant("Length", [len(ep.observations) for ep in episodes])
+    mgcfg.print_quant("Length", [len(ep.observations) for ep in episodes])
 
     for action in possible_actions:
         action_name = action.name if hasattr(action, 'name') else str(action)
-        print_quant(f"{action_name} actions", [sum([a == action for a in ep.actions]) for ep in episodes])
+        mgcfg.print_quant(f"{action_name} actions", [sum([a == action for a in ep.actions]) for ep in episodes])
 
     return episodes
 

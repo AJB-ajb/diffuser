@@ -44,7 +44,7 @@ class MinigridRenderer:
 
         # plot start and end points
         plt.scatter(observations[[0, -1],0], observations[[0,-1],1], c='black', zorder=10, marker='x')
-        
+
         #plt.scatter(observations[:,0], observations[:,1], c=colors, zorder=20)
 
         # td: plot arrows in the direction of the orientation
@@ -98,8 +98,18 @@ class MinigridRenderer:
         # log consistency metrics to tensorboard
         trainer = self.exp.trainer
         step = trainer.step
+
+        if 'metrics' not in self.exp.__dict__:
+            self.exp.metrics = {}
+        if step not in self.exp.metrics:
+            self.exp.metrics[step] = {}
+        self.exp.metrics[step].update(consistencies, successes)
+
         self.exp.summary_writer.add_scalars('consistency', consistencies, step)
         self.exp.summary_writer.add_scalars('successes', successes, step)
+
+        if step % trainer.save_freq == 0:
+            self.exp.save_metrics()
 
         def dict_str(d):
             return " | ".join([f"{k}: {v:.2e}" for k, v in d.items()])
