@@ -60,7 +60,7 @@ def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, po
         done = False
         episode_reward = 0
 
-        cur_observation = [coder.obs_repr_from_env(base_env)]
+        cur_observations = [coder.obs_repr_from_env(base_env)]
         cur_actions = []
 
         # probability with which to take a random action
@@ -74,7 +74,7 @@ def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, po
             if np.random.rand() <= random_prob:
                 action = np.random.choice(possible_actions)
             else:
-                action, _ = policy.predict(obs, deterministic=True)
+                action, _ = policy.predict(obs, deterministic=False)
 
             obs, reward, done, trunc, info = env.step(action)
             episode_reward += reward
@@ -84,7 +84,7 @@ def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, po
                 continue
 
             cur_actions.append(action)
-            cur_observation.append(coder.obs_repr_from_env(base_env))
+            cur_observations.append(coder.obs_repr_from_env(base_env))
 
         cur_actions.append(Actions.forward) # add some last action
 
@@ -92,11 +92,11 @@ def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, po
         if done:
             n_successes += 1
         
-        episodes.append(Episode(observations=cur_observation, actions=cur_actions, reward=episode_reward))
+        episodes.append(Episode(observations=cur_observations, actions=cur_actions, reward=episode_reward))
 
     print("Collected episodes: ", len(episodes))
     mgcfg.print_quant("Reward", [ep.reward for ep in episodes])
-    print("Success rate: ", n_successes / len(episodes))
+    print("Average success rate: ", n_successes / len(episodes))
     mgcfg.print_quant("Length", [len(ep.observations) for ep in episodes])
     # calc difference from start to end point
     start_points = [ep.observations[0] for ep in episodes]

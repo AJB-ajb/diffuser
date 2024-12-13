@@ -71,9 +71,8 @@ def instantiate_policy(cfg):
 
 def load_policy(exp):
     cfg = exp.cfg
-    env = gym.make(cfg.env_id, render_mode="rgb_array")
+    env = exp.env
     if cfg.policy.name == 'CnnPolicy':
-        env = ImgObsWrapper(env)
         model = PPO.load(exp.policy_path, env,verbose=1)
 
     elif cfg.policy.name == 'MlpPolicy':
