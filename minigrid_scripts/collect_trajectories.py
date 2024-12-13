@@ -95,8 +95,9 @@ def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, po
         episodes.append(Episode(observations=cur_observations, actions=cur_actions, reward=episode_reward))
 
     print("Collected episodes: ", len(episodes))
-    mgcfg.print_quant("Reward", [ep.reward for ep in episodes])
     print("Average success rate: ", n_successes / len(episodes))
+    
+    mgcfg.print_quant("Reward", [ep.reward for ep in episodes])
     mgcfg.print_quant("Length", [len(ep.observations) for ep in episodes])
     # calc difference from start to end point
     start_points = [ep.observations[0] for ep in episodes]

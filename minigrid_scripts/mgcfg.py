@@ -171,14 +171,16 @@ class Experiment:
         self.summary_writer = SummaryWriter(log_dir=self.tensorboard_logdir)
         self.metrics = {}
 
-    def save_state(self):
+    def save_state(self, step = None):
         """
             Save the state of the experiment
             - saves the current metrics to a pickle file
         """
         if not hasattr(self, "metrics"):
             self.metrics = {}
-        with open(str(self.metrics_file), "wb") as f:
+        if step is None:
+            step = self.trainer.step
+        with open(str(self.metrics_file(step)), "wb") as f:
             pickle.dump(self.metrics, f)
 
     @property 
@@ -195,8 +197,8 @@ class Experiment:
         return self.run_log_dir / "saves"
     
     @property
-    def metrics_file(self):
-        return self.results_dir / "metrics.pkl"
+    def metrics_file(self, step):
+        return self.results_dir / f"metrics{step}.pkl"
     
     @property
     def repo_dir(self):
