@@ -113,7 +113,7 @@ class Cfg(collections.abc.MutableMapping):
         """
             Return the path where the configuration is stored.
         """
-        return self.storage_dir / "cfgs" / f"{self.name}.json"
+        return self.storage_dir / "cfgs" / f"{self.name}_{self.run_name}_{self.data_id}.json"
     
     def save_to_json(self, path = None):
         """
@@ -123,6 +123,9 @@ class Cfg(collections.abc.MutableMapping):
         if path is None:
             path = self.cfg_path
             path.parent.mkdir(exist_ok=True, parents=True)
+        
+        if self.cfg_path.exists():
+            print(f"Warning: overwriting existing configuration at {self.cfg_path}")
         
         with open(str(path), "w") as f:
             json.dump(self.vars(), f)
