@@ -113,7 +113,7 @@ class Cfg(collections.abc.MutableMapping):
         """
             Return the path where the configuration is stored.
         """
-        return self.storage_dir / "cfgs" / f"{self.name}_{self.run_name}_{self.data_id}.json"
+        return self.storage_dir / "cfgs" / f"{self.name}_{self.run_name}_{self.policy.id}_{self.collection.id}.json"
     
     def save_to_json(self, path = None):
         """
