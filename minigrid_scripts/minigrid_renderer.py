@@ -8,6 +8,10 @@ import imageio
 from minigrid.core.actions import Actions
 from minigrid_base import EnvFeatureCoderBase
 from minigrid_base import Episode
+import minigrid_base
+
+import diffuser.utils.training as training
+from diffuser.guides.policies import Policy
 
 import mgcfg
 
@@ -23,7 +27,7 @@ class MinigridRenderer:
         self.exp = exp
         self.cfg = cfg
         self.env = exp.env
-        self.feature_coder = exp.coder
+        self.feature_coder : EnvFeatureCoderBase  = exp.coder
         self.base_env = self.env.unwrapped
         self.grid = self.base_env.grid
         self._background = np.zeros((self.grid.width, self.grid.height)) # boolean image of gridsize, where 1 is wall and 0 is empty
@@ -66,10 +70,35 @@ class MinigridRenderer:
           
 
         # td: plot different colors for different actions
-        plt.axis('off')
+        #plt.axis('off')
+
         plt.title(title)
+        self._remove_margins = False
         img = plot2img(fig, remove_margins=self._remove_margins)
         return img
+    
+    def eval_target_paths(self, trainer : training.Trainer, diffusion_model, n_samples, start_obs = None, target_obs = None):
+        """
+            Sample paths from the model, given start and end observation representations.
+        """
+        policy = Policy(diffusion_model, trainer.dataset.normalizer)
+        if start_obs is None:
+            start_obs = self.feature_coder.raw_obs_to_repr([1, 1, 0])
+        if target_obs is None:
+            target_obs = self.feature_coder.raw_obs_to_repr([self.grid.width - 2, self.grid.height - 2, 0])
+
+        cond = {
+           0 : start_obs,
+           self.cfg.horizon - 1: target_obs,
+        }
+        action, samples = policy(cond, batch_size=1)
+        actions = samples.actions
+        observations = samples.observations
+        # evaluate consistencies
+        self.evaluate(observations, actions, 'ema_full_path')
+        
+        _plot = self.renders(observations[0], cond[0])
+        imageio.imsave(self.exp.results_dir / f'ema_full_path_{self.exp.trainer.step}.png', _plot)
     
     def evaluate(self, observations, actions, model_name):
         # observations: [ n_samples x (horizon + 1) x observation_dim ]
@@ -103,13 +132,14 @@ class MinigridRenderer:
             self.exp.metrics = {}
         if step not in self.exp.metrics:
             self.exp.metrics[step] = {}
-        self.exp.metrics[step].update(consistencies, successes)
+        self.exp.metrics[step].update(consistencies)
+        self.exp.metrics[step].update(successes)
 
         self.exp.summary_writer.add_scalars('consistency', consistencies, step)
         self.exp.summary_writer.add_scalars('successes', successes, step)
 
         if step % trainer.save_freq == 0:
-            self.exp.save_metrics()
+            self.exp.save_state()
 
         def dict_str(d):
             return " | ".join([f"{k}: {v:.2e}" for k, v in d.items()])

@@ -25,7 +25,7 @@ def evaluate_policy(policy, env, n_episodes=10):
         done = False
         episode_reward = 0
         while not done and not trunc:
-            action, _ = policy.predict(obs, deterministic=True)
+            action, _ = policy.predict(obs, deterministic=False)
             obs, reward, done, trunc, info = env.step(action)
             episode_reward += reward
 
@@ -98,6 +98,11 @@ def collect_episodes(policy, env, coder: EnvFeatureCoderBase, cfg: mgcfg.Cfg, po
     mgcfg.print_quant("Reward", [ep.reward for ep in episodes])
     print("Success rate: ", n_successes / len(episodes))
     mgcfg.print_quant("Length", [len(ep.observations) for ep in episodes])
+    # calc difference from start to end point
+    start_points = [ep.observations[0] for ep in episodes]
+    end_points = [ep.observations[-1] for ep in episodes]
+    diffs = [np.linalg.norm(end - start) for start, end in zip(start_points, end_points)]
+    mgcfg.print_quant("Distance", diffs)
 
     for action in possible_actions:
         action_name = action.name if hasattr(action, 'name') else str(action)
@@ -110,9 +115,9 @@ if __name__ == '__main__':
 
     if len(sys.argv) < 2: 
         # testing
-        cfg = mgcfg.empty_env_cfg
+        cfg = mgcfg.empty_env_test_cfg
         
-        cfg.collection['exploration_probs'] = [1.0]
+        cfg.collection['exploration_probs'] = [0.]
         cfg.collection['n_episodes'] = 10
         print("Using default empty env configuration")
     else:
@@ -123,7 +128,7 @@ if __name__ == '__main__':
 
     env = exp.env
     import train_policy
-    policy = train_policy.instantiate_policy(cfg)
+    policy = train_policy.load_policy(exp)
 
     episodes = collect_episodes(policy, env, exp.coder, cfg)
 

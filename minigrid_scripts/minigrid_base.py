@@ -73,6 +73,11 @@ class EnvFeatureCoderBase(ABC):
             Return (num_transitions_consistent / num_transitions) for the given sequence of observations. 
             An observation is considered to be consistent if there is a legal action that transitions the agent to the next observation.
         """
+        if len(obs_reprs) < 2:
+            if verbose:
+                print("Not enough observations to check consistency.")
+            return 1.0
+        
         self.reset_env_state(self._base_env, self.raw_obs_from_repr(obs_reprs[0]))
         N_consistent = 0
 
@@ -100,6 +105,11 @@ class EnvFeatureCoderBase(ABC):
             Return (num_actions_consistent / num_actions) for the given sequence of observations and actions.
             An action is considered to be consistent if it transitions the agent sufficiently close to the next expected observation.
         """
+        if len(obs_reprs) < 2:
+            if verbose:
+                print("Not enough observations to check consistency.")
+            return 1.0
+        
         self.reset_env_state(self._base_env, self.raw_obs_from_repr(obs_reprs[0]))
         N_consistent = 0
 

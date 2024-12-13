@@ -65,15 +65,36 @@ def instantiate_policy(cfg):
         model = PPO(cfg.policy, env, verbose=1)
         
     else:
-        raise NotImplementedError(f"Policy {cfg.policy.name}not implemented")
+        raise NotImplementedError(f"Policy {cfg.policy.name} not implemented")
+
+    return model
+
+def load_policy(exp):
+    cfg = exp.cfg
+    env = gym.make(cfg.env_id, render_mode="rgb_array")
+    if cfg.policy.name == 'CnnPolicy':
+        env = ImgObsWrapper(env)
+        model = PPO.load(exp.policy_path, env,verbose=1)
+
+    elif cfg.policy.name == 'MlpPolicy':
+        env = FlatObsWrapper(env)
+        model = PPO.load(exp.policy_path, env, verbose=1)
+    else:
+        raise NotImplementedError(f"Policy {cfg.policy.name} not implemented")
 
     return model
     
 
 if __name__ == '__main__':
-    cfg = mgcfg.Cfg.load_from_args()
+    import sys
+    if len(sys.argv) < 2: 
+        # testing
+        cfg = mgcfg.empty_env_test_cfg
+        print("Test train policy")
+    else:
+        cfg = mgcfg.Cfg.load_from_args()
+
     exp = mgcfg.Experiment(cfg)
-    
     env = gym.make(cfg.env_id, render_mode="rgb_array")
 
     model = instantiate_policy(cfg)

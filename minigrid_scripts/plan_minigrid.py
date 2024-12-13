@@ -99,7 +99,7 @@ diffusion = trainer.ema_model
 obs_dim = script.observation_dim
 action_dim = script.action_dim
 
-policy = script.Policy(diffusion, dataset.normalizer)
+policy = Policy(diffusion, dataset.normalizer)
 
 #---------------------------------- main loop ----------------------------------#
 
@@ -127,7 +127,7 @@ target_obs[:2] = target
 
 cond = {
 
-    64 - 1: target_obs, # before: horizon - 1
+    cfg.horizon - 1: target_obs,
 }
 
 ## observations for rendering

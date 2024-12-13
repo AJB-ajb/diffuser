@@ -202,6 +202,9 @@ class Trainer(object):
         '''
             renders samples from (ema) diffusion model
         '''
+        
+        self.renderer.eval_target_paths(self, self.ema_model, n_samples)
+
         for model_name in ['model', 'ema_model']:
             model = getattr(self, model_name)
             for i in range(batch_size):

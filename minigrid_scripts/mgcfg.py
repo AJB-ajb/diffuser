@@ -12,6 +12,7 @@ from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import pickle
+import copy
 
 # minigrid-diffuser experiment configuration
 class Cfg(collections.abc.MutableMapping):
@@ -22,10 +23,12 @@ class Cfg(collections.abc.MutableMapping):
             self.is_toplevel = is_toplevel
         
         for key, value in kwargs.items():
-            if isinstance(value, dict):
+            # need to copy the dictionary to avoid modifying the original
+            if isinstance(value, collections.abc.Mapping):
                 self.__dict__[key] = Cfg(**value)
             else:
-                self.__dict__[key] = value
+                self.__dict__[key] = copy.deepcopy(value)
+                
 
     def __setitem__(self, name, value):
         if name in self.__dict__.keys():
@@ -274,9 +277,17 @@ empty_env_cfg['policy']['n_timesteps'] = 2e5
 empty_env_cfg['collection']['id'] = "policy_random_1000"
 empty_env_cfg['collection']['n_episodes'] = 1000
 
+empty_env_test_cfg = Cfg(**empty_env_cfg)
+empty_env_test_cfg['name'] = "empty_env_test"
+empty_env_test_cfg['run_name'] = "run0"
+empty_env_test_cfg['policy']['id'] = "cnn_1e4"
+empty_env_test_cfg['policy']['n_timesteps'] = 1e4
+empty_env_test_cfg['collection']['id'] = "policy_random_100"
+empty_env_test_cfg['collection']['n_episodes'] = 100
+empty_env_test_cfg['trainer']['n_train_steps'] = int(1e4)
 
 def print_quant(name, data):
-    print(f"{name}: {np.mean(data)} ± {np.std(data)}, min: {np.min(data)}, max: {np.max(data)}")
+    print(f"{name}: {np.mean(data):.4f} ± {np.std(data)}, min: {np.min(data):.4f}, max: {np.max(data):.4f}")
 
 
 if __name__ == "__main__":
