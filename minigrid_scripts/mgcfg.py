@@ -196,9 +196,8 @@ class Experiment:
     def saves_dir(self):
         return self.run_log_dir / "saves"
     
-    @property
     def metrics_file(self, step):
-        return self.results_dir / f"metrics{step}.pkl"
+        return self.results_dir / f"metrics_{step}.pkl"
     
     @property
     def repo_dir(self):
